@@ -104,8 +104,18 @@ func (c *ChromaDBClient) CreateCollection(name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
+	
+	// Use v2 API with default tenant and database
 	url := fmt.Sprintf("%s/api/v2/collections", c.baseURL)
-	resp, err := c.httpClient.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Chroma-Tenant", "default_tenant")
+	req.Header.Set("X-Chroma-Database", "default_database")
+	
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to make request: %w", err)
 	}
@@ -128,9 +138,18 @@ func (c *ChromaDBClient) AddDocument(collectionName, id, document string, embedd
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
-	// A API para adicionar documentos é /api/v2/collections/{collection_name}/add
+	
+	// Use v2 API with tenant and database headers
 	url := fmt.Sprintf("%s/api/v2/collections/%s/add", c.baseURL, collectionName)
-	resp, err := c.httpClient.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Chroma-Tenant", "default_tenant")
+	req.Header.Set("X-Chroma-Database", "default_database")
+	
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to make request: %w", err)
 	}
@@ -154,8 +173,17 @@ func (c *ChromaDBClient) QuerySimilar(collectionName string, queryEmbedding []fl
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
+	// Use v2 API with tenant and database headers
 	url := fmt.Sprintf("%s/api/v2/collections/%s/query", c.baseURL, collectionName)
-	resp, err := c.httpClient.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Chroma-Tenant", "default_tenant")
+	req.Header.Set("X-Chroma-Database", "default_database")
+	
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
