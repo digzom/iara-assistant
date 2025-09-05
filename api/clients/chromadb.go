@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -128,6 +129,9 @@ func (c *ChromaDBClient) CreateCollection(name string) error {
 }
 
 func (c *ChromaDBClient) AddDocument(collectionName, id, document string, embedding []float32, metadata map[string]interface{}) error {
+	log.Printf("ChromaDB AddDocument: collection=%s, id=%s, doc_length=%d, embedding_length=%d", 
+		collectionName, id, len(document), len(embedding))
+		
 	reqBody := AddRequest{
 		IDs:        []string{id},
 		Embeddings: [][]float32{embedding},
@@ -141,6 +145,8 @@ func (c *ChromaDBClient) AddDocument(collectionName, id, document string, embedd
 	
 	// Use v2 API with tenant and database headers
 	url := fmt.Sprintf("%s/api/v2/collections/%s/add", c.baseURL, collectionName)
+	log.Printf("ChromaDB request URL: %s", url)
+	
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -149,13 +155,20 @@ func (c *ChromaDBClient) AddDocument(collectionName, id, document string, embedd
 	req.Header.Set("X-Chroma-Tenant", "default_tenant")
 	req.Header.Set("X-Chroma-Database", "default_database")
 	
+	log.Printf("ChromaDB headers: Tenant=%s, Database=%s", "default_tenant", "default_database")
+	
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
+	
+	log.Printf("ChromaDB response status: %d", resp.StatusCode)
+	
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to add document, status: %s", resp.Status)
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("ChromaDB error response body: %s", string(body))
+		return fmt.Errorf("failed to add document, status: %d, body: %s", resp.StatusCode, string(body))
 	}
 	return nil
 }

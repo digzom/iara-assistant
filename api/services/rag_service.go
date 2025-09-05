@@ -63,6 +63,8 @@ func (s *RAGService) initializeCollection() error {
 }
 
 func (s *RAGService) LearnFact(req LearnRequest) (*Response, error) {
+	log.Printf("LearnFact called with text: %.50s...", req.Text)
+	
 	if req.Text == "" {
 		return &Response{
 			Success: false,
@@ -70,13 +72,16 @@ func (s *RAGService) LearnFact(req LearnRequest) (*Response, error) {
 		}, nil
 	}
 
+	log.Printf("Generating embedding for text...")
 	embedding, err := s.googleClient.GenerateEmbedding(req.Text)
 	if err != nil {
+		log.Printf("Embedding generation failed: %v", err)
 		return &Response{
 			Success: false,
 			Error:   "Failed to generate embedding",
 		}, fmt.Errorf("embedding generation failed: %w", err)
 	}
+	log.Printf("Embedding generated successfully, length: %d", len(embedding))
 
 	docID := s.generateDocID(req.Text)
 	metadata := map[string]interface{}{
@@ -85,13 +90,16 @@ func (s *RAGService) LearnFact(req LearnRequest) (*Response, error) {
 		"type":      "fact",
 	}
 
+	log.Printf("Storing document in ChromaDB with ID: %s", docID)
 	err = s.chromaClient.AddDocument(CollectionName, docID, req.Text, embedding, metadata)
 	if err != nil {
+		log.Printf("ChromaDB storage failed: %v", err)
 		return &Response{
 			Success: false,
 			Error:   "Failed to store fact",
 		}, fmt.Errorf("document storage failed: %w", err)
 	}
+	log.Printf("Document stored successfully in ChromaDB")
 
 	return &Response{
 		Success: true,
