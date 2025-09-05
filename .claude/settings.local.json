@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod init:*)",
+      "Bash(go mod:*)",
+      "Bash(/bin/bash -c \"go mod tidy\")",
+      "Bash(docker compose:*)",
+      "Bash(curl:*)",
+      "Bash(go build:*)",
+      "Bash(docker-compose:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
