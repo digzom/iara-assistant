@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,8 +15,8 @@ import (
 )
 
 const (
-	DOMBaseURL    = "https://dom.mossoro.rn.gov.br/dom"
-	WebhookURL    = "https://iara.digzom.dev/webhook/f97912c2-a20c-45c5-9642-4e51d33bd7d9/selection-process"
+	DOMBaseURL     = "https://dom.mossoro.rn.gov.br/dom"
+	WebhookURL     = "https://iara.digzom.dev/webhook/f97912c2-a20c-45c5-9642-4e51d33bd7d9/selection-process"
 	RequestTimeout = 30 * time.Second
 )
 
@@ -31,7 +33,8 @@ type DOMCrawler struct {
 }
 
 type WebhookPayload struct {
-	URL string `json:"url"`
+	URL    string `json:"url"`
+	rawDoc string `json:"rawDoc"`
 }
 
 func NewDOMCrawler() *DOMCrawler {
@@ -62,6 +65,30 @@ func (c *DOMCrawler) CrawlDOM() error {
 		return fmt.Errorf("failed to parse HTML: %w", err)
 	}
 
+	number, err := c.extractLastPublicationNumber(doc)
+	if err != nil {
+		return fmt.Errorf("can't find that fucking number, sorry bro")
+	}
+
+	lastSavedNumber, err := c.getLastSavedNumber()
+	if err != nil {
+		return fmt.Errorf("can't get the last saved number :(")
+	}
+
+	intNumber, err := strconv.Atoi(number)
+	if err != nil {
+		return fmt.Errorf("gone wrong")
+	}
+
+	intLastSavedNumber, err := strconv.Atoi(lastSavedNumber)
+	if err != nil {
+		return fmt.Errorf("gone wrong 2")
+	}
+
+	if intNumber <= intLastSavedNumber {
+		return fmt.Errorf("it's not an error, but no need to send the webhook now :)")
+	}
+
 	publicationLink, err := c.extractPublicationLink(doc)
 	if err != nil {
 		return fmt.Errorf("failed to extract publication link: %w", err)
@@ -71,6 +98,7 @@ func (c *DOMCrawler) CrawlDOM() error {
 
 	// Step 3: Visit the publication page and check for keywords
 	fullPublicationURL := "https://dom.mossoro.rn.gov.br" + publicationLink
+
 	hasKeywords, err := c.checkForKeywords(fullPublicationURL)
 	if err != nil {
 		return fmt.Errorf("failed to check keywords: %w", err)
@@ -79,9 +107,15 @@ func (c *DOMCrawler) CrawlDOM() error {
 	// Step 4: Send webhook notification if keywords found
 	if hasKeywords {
 		log.Printf("Keywords found! Sending webhook notification for: %s", fullPublicationURL)
-		if err := c.sendWebhook(fullPublicationURL); err != nil {
+		if err := c.sendWebhook(fullPublicationURL, doc.Text()); err != nil {
 			return fmt.Errorf("failed to send webhook: %w", err)
 		}
+
+		err = os.WriteFile("last_dom", []byte(number), 0644)
+		if err != nil {
+			return fmt.Errorf("cant write shit")
+		}
+
 		log.Println("Webhook sent successfully")
 	} else {
 		log.Println("No target keywords found in this publication")
@@ -90,10 +124,34 @@ func (c *DOMCrawler) CrawlDOM() error {
 	return nil
 }
 
+func (c *DOMCrawler) getLastSavedNumber() (string, error) {
+	content, err := os.ReadFile("last_dom")
+	if err != nil {
+		return "", fmt.Errorf("sorry bro, cant open this shit")
+	}
+
+	return string(content), nil
+}
+
+func (c *DOMCrawler) extractLastPublicationNumber(doc *goquery.Document) (string, error) {
+	var publicationNumber string
+
+	doc.Find(".jom-title").Each(func(i int, h3 *goquery.Selection) {
+		title := h3.Find("a").First().Text()
+		publicationNumber = strings.TrimPrefix(title, "DOM Nº ")
+	})
+
+	if publicationNumber == "" {
+		return "", fmt.Errorf("coud not find publication number")
+	}
+
+	return publicationNumber, nil
+}
+
 func (c *DOMCrawler) extractPublicationLink(doc *goquery.Document) (string, error) {
 	// Look for the div with class "last-jom-actions" under section with id "ultima-edicao"
 	var publicationLink string
-	
+
 	doc.Find("#ultima-edicao").Each(func(i int, section *goquery.Selection) {
 		section.Find(".last-jom-actions").Each(func(j int, div *goquery.Selection) {
 			// Get the first <a> tag (Leitura Online)
@@ -144,9 +202,10 @@ func (c *DOMCrawler) checkForKeywords(url string) (bool, error) {
 	return false, nil
 }
 
-func (c *DOMCrawler) sendWebhook(url string) error {
+func (c *DOMCrawler) sendWebhook(url string, doc string) error {
 	payload := WebhookPayload{
-		URL: url,
+		URL:    url,
+		rawDoc: doc,
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -166,3 +225,4 @@ func (c *DOMCrawler) sendWebhook(url string) error {
 
 	return nil
 }
+
