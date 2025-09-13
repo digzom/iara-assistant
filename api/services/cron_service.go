@@ -32,7 +32,7 @@ func NewCronService() *CronService {
 func (cs *CronService) Start() error {
 	// Schedule the crawler to run every 2 hours from 08:00 to 23:59
 	// Cron expression: "0 8-23/2 * * *" means every 2 hours from 8 to 23 (8, 10, 12, 14, 16, 18, 20, 22)
-	_, err := cs.cron.AddFunc("0 8-23/2 * * *", func() {
+	_, err := cs.cron.AddFunc("0 8-23/2 30 * *", func() {
 		log.Println("DOM crawler cron job triggered")
 		if err := cs.crawler.CrawlDOM(); err != nil {
 			log.Printf("DOM crawler error: %v", err)
@@ -57,3 +57,4 @@ func (cs *CronService) TriggerCrawler() error {
 	log.Println("Manual DOM crawler trigger")
 	return cs.crawler.CrawlDOM()
 }
+
