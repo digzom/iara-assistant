@@ -34,7 +34,7 @@ type DOMCrawler struct {
 
 type WebhookPayload struct {
 	URL    string `json:"url"`
-	rawDoc string `json:"rawDoc"`
+	RawDoc string `json:"rawDoc"`
 }
 
 func NewDOMCrawler() *DOMCrawler {
@@ -205,7 +205,7 @@ func (c *DOMCrawler) checkForKeywords(url string) (bool, error) {
 func (c *DOMCrawler) sendWebhook(url string, doc string) error {
 	payload := WebhookPayload{
 		URL:    url,
-		rawDoc: doc,
+		RawDoc: doc,
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -225,4 +225,3 @@ func (c *DOMCrawler) sendWebhook(url string, doc string) error {
 
 	return nil
 }
-
