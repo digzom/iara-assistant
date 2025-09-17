@@ -2,11 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"iara-assistant/services"
 	"log"
 	"net/http"
 	"os"
-
-	"iara-assistant/services"
 )
 
 type ErrorResponse struct {
@@ -52,7 +51,7 @@ func MessageHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
-	
+
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -82,18 +81,19 @@ func LearnHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
-	
+
 	json.NewEncoder(w).Encode(response)
 }
 
 func sendError(w http.ResponseWriter, message string, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	
+
 	response := ErrorResponse{
 		Error:   http.StatusText(status),
 		Message: message,
 	}
-	
+
 	json.NewEncoder(w).Encode(response)
 }
+

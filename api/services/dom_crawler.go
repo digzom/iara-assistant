@@ -125,6 +125,11 @@ func (c *DOMCrawler) CrawlDOM() error {
 }
 
 func (c *DOMCrawler) getLastSavedNumber() (string, error) {
+	_, err := os.Stat("last_dom")
+	if err != nil {
+		os.WriteFile("last_dom", []byte("0"), 0644)
+	}
+
 	content, err := os.ReadFile("last_dom")
 	if err != nil {
 		return "", fmt.Errorf("sorry bro, cant open this shit")
